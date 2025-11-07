@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeatherBox Indonesia</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes pop-up {0%{transform:scale(0.9);opacity:0;}100%{transform:scale(1);opacity:1;}}
+    .pop-up {animation:pop-up 0.3s cubic-bezier(.76,.01,.61,1.34);}
+    .city-btn:active {transform:scale(0.96);}
+    .custom-scroll::-webkit-scrollbar {height:7px;}
+    .custom-scroll::-webkit-scrollbar-thumb {background:rgba(19,77,145,0.18);}
+  </style>
+</head>
+<body class="bg-gradient-to-br from-sky-200 via-slate-100 to-sky-50 min-h-screen flex flex-col gap-3">
+
+  <header class="shadow-sm bg-white/60 backdrop-blur py-5 md:py-7 text-center sticky top-0 z-30">
+    <h1 class="text-3xl md:text-4xl font-black text-sky-700 tracking-tight">🌤️ WeatherBox Indonesia</h1>
+    <p class="mt-1 text-sky-500">Info cuaca cepat & kilas prakiraan untuk 40+ kota besar Indonesia</p>
+  </header>
+
+  <main class="max-w-4xl mx-auto w-full px-2 py-6 md:py-14 flex-1">
+    <section class="bg-white/80 rounded-3xl border border-sky-100 shadow-xl p-6 md:p-10 relative">
+      <label class="block mb-3 text-sky-700 font-semibold">Cari kota atau provinsi:</label>
+      <input id="filterBox" placeholder="Cari kota..." class="transition ring-1 ring-sky-300 focus:ring-2 focus:ring-sky-500 px-4 py-2 w-full bg-white rounded-xl mb-5 outline-none"/>
+
+      <!-- Kota list -->
+      <div id="cityList" class="grid custom-scroll grid-cols-2 md:grid-cols-4 gap-3 max-h-44 md:max-h-56 overflow-x-hidden overflow-y-auto"></div>
+    </section>
+
+    <section>
+      <div id="weatherCard" class="mt-10 pop-up"></div>
+    </section>
+  </main>
+
+  <footer class="py-6 text-sky-400 font-medium tracking-wide flex flex-col items-center text-xs">
+    <span>Demo by WeatherBox Indonesia &copy; 2025</span>
+    <span class="text-[10px] opacity-60">Cuaca simulasi, bukan prediksi real-time</span>
+  </footer>
+
+  <script>
+    // Data kota
+    const cities = [
+      { name: 'Jakarta', prov: 'DKI Jakarta', lat: -6.2, lon: 106.8 },
+      { name: 'Surabaya', prov: 'Jawa Timur', lat: -7.25, lon: 112.75 },
+      { name: 'Bandung', prov: 'Jawa Barat', lat: -6.9, lon: 107.6 },
+      { name: 'Denpasar', prov: 'Bali', lat: -8.67, lon: 115.21 },
+      { name: 'Medan', prov: 'Sumatera Utara', lat: 3.5, lon: 98.6 },
+      { name: 'Makassar', prov: 'Sulawesi Selatan', lat: -5.1, lon: 119.4 },
+      { name: 'Semarang', prov: 'Jawa Tengah', lat: -6.97, lon: 110.4 },
+      { name: 'Palembang', prov: 'Sumatera Selatan', lat: -2.97, lon: 104.77 },
+      { name: 'Batam', prov: 'Kepulauan Riau', lat: 1.04, lon: 103.99 },
+      { name: 'Yogyakarta', prov: 'DIY', lat: -7.79, lon: 110.36 },
+      { name: 'Balikpapan', prov: 'Kalimantan Timur', lat: -1.23, lon: 116.8 },
+      { name: 'Padang', prov: 'Sumatera Barat', lat: -0.94, lon: 100.4 },
+      { name: 'Malang', prov: 'Jawa Timur', lat: -7.97, lon: 112.6 },
+      { name: 'Banjarmasin', prov: 'Kalimantan Selatan', lat: -3.3, lon: 114.5 },
+      { name: 'Pekanbaru', prov: 'Riau', lat: 0.5, lon: 101.45 },
+      { name: 'Tangerang', prov: 'Banten', lat: -6.17, lon: 106.63 },
+      { name: 'Serang', prov: 'Banten', lat: -6.12, lon: 106.15 },
+      { name: 'Gorontalo', prov: 'Gorontalo', lat: 0.54, lon: 123.06 },
+      { name: 'Ambon', prov: 'Maluku', lat: -3.69, lon: 128.18 },
+      { name: 'Kupang', prov: 'NTT', lat: -10.17, lon: 123.6 },
+      { name: 'Pontianak', prov: 'Kalimantan Barat', lat: -0.02, lon: 109.34 },
+      { name: 'Jambi', prov: 'Jambi', lat: -1.61, lon: 103.61 },
+      { name: 'Samarinda', prov: 'Kalimantan Timur', lat: -0.5, lon: 117.15 },
+      { name: 'Manado', prov: 'Sulawesi Utara', lat: 1.47, lon: 124.84 },
+      { name: 'Samarinda', prov: 'Kalimantan Timur', lat: -0.5, lon: 117.15 },
+      { name: 'Cirebon', prov: 'Jawa Barat', lat: -6.7, lon: 108.5 },
+      { name: 'Banda Aceh', prov: 'Aceh', lat: 5.5, lon: 95.3 },
+      { name: 'Bogor', prov: 'Jawa Barat', lat: -6.5, lon: 106.8 },
+      { name: 'Palu', prov: 'Sulawesi Tengah', lat: -0.89, lon: 119.87 },
+    ];
+
+    // Simulasi cuaca
+    const weatherTypes = [
+      {icon:'☀️',desc:"Cerah"}, {icon:"☁️",desc:"Berawan"},
+      {icon:"🌧️",desc:"Hujan"}, {icon:"🌦️",desc:"Gerimis"},
+      {icon:"⛈️",desc:"Hujan Petir"}, {icon:'🌤️',desc:"Cerah Berawan"}
+    ];
+
+    let currentCity = null;
+    let searchText = '';
+
+    // Helper: random weather data per kota
+    function fakeWeatherData(city) {
+      const type = weatherTypes[Math.floor(Math.random()*weatherTypes.length)];
+      const baseTemp = (city.lat<0?27:29) + (Math.random()*4-2);
+      return {
+        ...city,
+        main: { temp: Math.round(baseTemp), humidity: Math.floor(60+Math.random()*35), },
+        wind: { speed: (Math.random()*6+2).toFixed(1) },
+        weather: type,
+        min: Math.round(baseTemp-2+Math.random()*1.2),
+        max: Math.round(baseTemp+2+Math.random()*1.8)
+      }
+    }
+
+    // Render daftar kota
+    function renderCityList() {
+      const listEl = document.getElementById('cityList');
+      // Filter data sesuai pencarian
+      const filter = cities.filter(
+        c=>
+          c.name.toLowerCase().includes(searchText) ||
+          c.prov.toLowerCase().includes(searchText)
+      );
+      listEl.innerHTML = filter.map(
+        c=>`
+        <button class="city-btn px-1 py-4 rounded-xl bg-sky-50 border border-sky-200 hover:bg-sky-100 transition flex flex-col items-center shadow-md ${currentCity&&currentCity.name===c.name?'ring-2 ring-sky-400':''}"
+          onclick="showWeather('${c.name}')">
+          <div class="text-base font-bold text-sky-700">${c.name}</div>
+          <div class="text-xs text-sky-400 mb-1">${c.prov}</div>
+        </button>
+      `
+      ).join('');
+    }
+
+    // Render kartu cuaca
+    function renderWeatherCard() {
+      const cardEl = document.getElementById('weatherCard');
+      if (!currentCity) { cardEl.innerHTML = ''; return; }
+      const data = fakeWeatherData(currentCity);
+      cardEl.innerHTML = `
+        <div class="max-w-xl mx-auto flex flex-col md:flex-row items-center gap-8 bg-gradient-to-tr from-sky-100 via-white to-sky-50 border border-sky-200 rounded-3xl shadow-2xl px-9 py-7 pop-up">
+            <section class="flex-1 text-center md:text-left">
+              <div class="text-xl font-bold text-sky-800 flex items-center gap-3 justify-center md:justify-start">
+                <span class="text-2xl">📍</span>
+                <span>${data.name}, <span class="text-sky-400 font-normal">${data.prov}</span></span>
+              </div>
+              <div class="flex items-center gap-7 justify-center md:justify-start mt-3">
+                <span class="text-6xl md:text-7xl">${data.weather.icon}</span>
+                <div>
+                  <div class="text-6xl font-black text-sky-600">${data.main.temp}°C</div>
+                  <div class="capitalize text-base text-sky-700">${data.weather.desc}</div>
+                  <div class="text-xs text-gray-400 mt-2">Min ${data.min}° · Max ${data.max}°</div>
+                </div>
+              </div>
+            </section>
+            <section class="flex-1 flex flex-col gap-3 items-center justify-center text-sky-700 font-medium">
+                <div>💧 Kelembapan: <b>${data.main.humidity}%</b></div>
+                <div>💨 Angin: <b>${data.wind.speed} m/s</b></div>
+            </section>
+        </div>
+      `;
+    }
+
+    // Event search kota
+    document.addEventListener('DOMContentLoaded',()=>{
+      renderCityList();
+      document.getElementById('filterBox').addEventListener('input',e=>{
+        searchText = e.target.value.toLowerCase();
+        renderCityList();
+      });
+      window.showWeather = function(cityName) {
+        currentCity = cities.find((c)=>c.name===cityName);
+        renderWeatherCard();
+        // Scroll ke section bawah
+        document.getElementById('weatherCard').scrollIntoView({behavior: 'smooth', block: 'center'});
+        // Highlight kota terpilih
+        renderCityList();
+      }
+    });
+
+  </script>
+</body>
+</html>
